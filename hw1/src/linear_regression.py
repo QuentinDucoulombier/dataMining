@@ -1,77 +1,59 @@
-#=============================================================================================================
-# Import Libraries
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
-#=============================================================================================================
-# Linear Regression Model Class
 class LinearRegression:
     def __init__(self):
         self.weights = None
 
     def fit(self, X, y, regularization_strength=1e-5):
-        """
-        Fit the linear regression model using the Normal Equation with regularization.
-        """
-        X_b = np.c_[np.ones((X.shape[0], 1)), X]  # add x0 = 1 to each instance
+        X_b = np.c_[np.ones((X.shape[0], 1)), X]  # Ajouter x0 = 1 à chaque instance
         identity_matrix = np.eye(X_b.shape[1])
-        identity_matrix[0, 0] = 0  # Exclude the bias term from regularization
-        self.weights = np.linalg.inv(X_b.T.dot(X_b) + regularization_strength * identity_matrix).dot(X_b.T).dot(y)
-
+        identity_matrix[0, 0] = 0  # Exclure le terme de biais de la régularisation
+        self.weights = np.linalg.inv(X_b.T @ X_b + regularization_strength * identity_matrix) @ X_b.T @ y
 
     def predict(self, X):
-        """
-        Make predictions using the linear regression model.
-        """
-        X_b = np.c_[np.ones((X.shape[0], 1)), X]  # add x0 = 1 to each instance
-        return X_b.dot(self.weights)
+        X_b = np.c_[np.ones((X.shape[0], 1)), X]  # Ajouter x0 = 1 à chaque instance
+        return X_b @ self.weights
 
     def calculate_rmse(self, predictions, targets):
-        """
-        Calculate the Root Mean Square Error (RMSE) between predictions and targets.
-        """
         return np.sqrt(np.mean((predictions - targets) ** 2))
 
-#=============================================================================================================
-# Data Loading Function
 def load_data(filepath):
-    """
-    Load and prepare data from a CSV file, handling NaN values.
-    """
     data = pd.read_csv(filepath)
-    # Check for NaN values
-    if data.isnull().values.any():
-        print("NaN values found in", filepath, "Handling...")
-        # Option to fill NaNs
-        data = data.fillna(method='ffill').fillna(method='bfill')
-    X = data.drop('PM2.5', axis=1).values  # Assuming 'PM2.5' is the target column
+    if 'PM2.5' not in data.columns:
+        raise ValueError("Data must contain 'PM2.5' column.")
+    X = data.drop('PM2.5', axis=1).values
     y = data['PM2.5'].values
     return X, y
 
-
-#=============================================================================================================
-# Main Execution Block
 if __name__ == "__main__":
-    # Load training and testing data
+    # Charger les données d'entraînement et de test
     X_train, y_train = load_data('./processed_train.csv')
     X_test, y_test = load_data('./processed_test.csv')
 
-    # Create an instance of LinearRegression
+    # Créer une instance de LinearRegression
     model = LinearRegression()
 
-    # Fit the model
+    # Ajuster le modèle
     model.fit(X_train, y_train)
 
-    # Predict using the model
+    # Prédire en utilisant le modèle
     predictions_train = model.predict(X_train)
     predictions_test = model.predict(X_test)
 
-    # Calculate and print RMSE
+    # Calculer et afficher RMSE
     rmse_train = model.calculate_rmse(predictions_train, y_train)
     rmse_test = model.calculate_rmse(predictions_test, y_test)
-    print("Training RMSE:", rmse_train)
-    print("Testing RMSE:", rmse_test)
 
-    # Print predicted values
-    print("Train Predictions:", predictions_train)
-    print("Test Predictions:", predictions_test)
+    # Tracer les prédictions par rapport aux valeurs réelles pour le jeu de test
+    plt.figure(figsize=(10, 6))
+    plt.scatter(y_test, predictions_test, alpha=0.5)
+    plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=4)
+    plt.xlabel('Actual')
+    plt.ylabel('Predicted')
+    plt.title('Actual vs. Predicted')
+    plt.show()
+
+    print(f"RMSE on training set: {rmse_train:.10f}")
+    print(f"RMSE on test set: {rmse_test:.10f}")

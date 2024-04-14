@@ -7,8 +7,27 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
-#=============================================================================================================
-# Functions to load and preprocess data
+def remove_outliers(df, feature_cols, target_col, factor=1.5):
+    """
+    Supprime les valeurs aberrantes d'un DataFrame basé sur l'IQR.
+    :param df: DataFrame contenant les données.
+    :param feature_cols: Colonnes des caractéristiques (sans la colonne cible).
+    :param target_col: La colonne cible.
+    :param factor: Le facteur à multiplier avec l'IQR pour définir les bornes.
+    :return: DataFrame nettoyé des valeurs aberrantes.
+    """
+    Q1 = df[feature_cols + [target_col]].quantile(0.25)
+    Q3 = df[feature_cols + [target_col]].quantile(0.75)
+    IQR = Q3 - Q1
+
+    lower_bound = Q1 - factor * IQR
+    upper_bound = Q3 + factor * IQR
+
+    mask = (df[feature_cols] > lower_bound[feature_cols]) & (df[feature_cols] < upper_bound[feature_cols])
+    mask = mask.all(axis=1) & ((df[target_col] > lower_bound[target_col]) & (df[target_col] < upper_bound[target_col]))
+
+    return df[mask]
+
 
 def load_and_preprocess_data():
     # Import Train and Test Data
@@ -55,6 +74,12 @@ def load_and_preprocess_data():
     df_train = pd.DataFrame(train_data, columns=labels)
     df_test = pd.DataFrame(test_data, columns=labels)
 
+    df_train = df_train.fillna(df_train.median())
+    df_test = df_test.fillna(df_test.median())
+
+    #feature_cols = [col for col in df_train.columns if col != 'PM2.5']
+    #df_train_cleaned = remove_outliers(df_train, feature_cols, 'PM2.5')
+
     return df_train, df_test
 
 def save_data(df_train, df_test):
@@ -64,7 +89,7 @@ def save_data(df_train, df_test):
 def main():
     df_train, df_test = load_and_preprocess_data()
     save_data(df_train, df_test)
-
+    
     # Data Analysis (Optional: You might move this to another script or notebook for clarity)
     correlation_matrix = df_train.corr()
     plt.figure(figsize=(12, 8))
