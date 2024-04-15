@@ -8,14 +8,6 @@ import matplotlib.pyplot as plt
 
 
 def remove_outliers(df, feature_cols, target_col, factor=1.5):
-    """
-    Supprime les valeurs aberrantes d'un DataFrame basé sur l'IQR.
-    :param df: DataFrame contenant les données.
-    :param feature_cols: Colonnes des caractéristiques (sans la colonne cible).
-    :param target_col: La colonne cible.
-    :param factor: Le facteur à multiplier avec l'IQR pour définir les bornes.
-    :return: DataFrame nettoyé des valeurs aberrantes.
-    """
     Q1 = df[feature_cols + [target_col]].quantile(0.25)
     Q3 = df[feature_cols + [target_col]].quantile(0.75)
     IQR = Q3 - Q1
@@ -76,9 +68,12 @@ def load_and_preprocess_data():
 
     df_train = df_train.fillna(df_train.median())
     df_test = df_test.fillna(df_test.median())
+    print(df_train.head())  
+    
+    feature_cols = [col for col in df_train.columns if col != 'PM2.5']
+    df_train_cleaned = remove_outliers(df_train, feature_cols, 'PM2.5')
+    print(df_train_cleaned.head())  
 
-    #feature_cols = [col for col in df_train.columns if col != 'PM2.5']
-    #df_train_cleaned = remove_outliers(df_train, feature_cols, 'PM2.5')
 
     return df_train, df_test
 
@@ -89,7 +84,7 @@ def save_data(df_train, df_test):
 def main():
     df_train, df_test = load_and_preprocess_data()
     save_data(df_train, df_test)
-    
+
     # Data Analysis (Optional: You might move this to another script or notebook for clarity)
     correlation_matrix = df_train.corr()
     plt.figure(figsize=(12, 8))

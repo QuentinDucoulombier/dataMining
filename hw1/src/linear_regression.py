@@ -27,6 +27,31 @@ def load_data(filepath):
     y = data['PM2.5'].values
     return X, y
 
+
+def create_submission_file(predictions, filename="submission.csv"):
+    """
+    Create a Kaggle submission file from the predictions.
+
+    Parameters:
+    - predictions: A list or array of predictions.
+    - filename: The name of the submission file to create.
+
+    The function assumes that the index of predictions starts from 0 and corresponds to the test dataset order.
+    """
+    # Create a DataFrame with the index and the predictions
+    df = pd.DataFrame(predictions, columns=['answer'])
+    
+    # Ajouter une colonne 'index' basée sur le nombre de prédictions
+    df.index.name = 'index'
+    df.reset_index(inplace=True)
+    
+    # Format the 'index' column to match the required Kaggle format
+    df['index'] = df['index'].apply(lambda x: f'index_{x}')
+    
+    # Enregistrer le DataFrame dans un fichier CSV
+    df.to_csv(filename, index=False)
+
+
 if __name__ == "__main__":
     # Charger les données d'entraînement et de test
     X_train, y_train = load_data('./processed_train.csv')
@@ -57,3 +82,7 @@ if __name__ == "__main__":
 
     print(f"RMSE on training set: {rmse_train:.10f}")
     print(f"RMSE on test set: {rmse_test:.10f}")
+    # Créer le fichier de soumission
+    y_test_pred_reduced = predictions_test[8::9]
+    create_submission_file(y_test_pred_reduced, filename="my_kaggle_submission.csv")
+    create_submission_file(y_test, filename="my_kaggle_submission_true.csv")
