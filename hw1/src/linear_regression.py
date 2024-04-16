@@ -4,7 +4,8 @@ from data_preprocessing import prepare_data
 import matplotlib.pyplot as plt
 
 # Load data
-features, labels, testing_data, test_feature_array = prepare_data()
+
+features, labels, testing_data, test_feature_array, _ = prepare_data()
 class LinearModel:
     def __init__(self):
         self.coefficients = None
