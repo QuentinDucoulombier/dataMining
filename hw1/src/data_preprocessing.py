@@ -1,21 +1,22 @@
 import pandas as pd
 import numpy as np
 
-excluded_columns = ['NO                  ', 
-                    'RAINFALL            ', 
-                    'WIND_SPEED          ', 
+excluded_columns = ['NO                  ',
+                    'WIND_SPEED          ',
+                    'NMHC                ', 
                     'O3                  ', 
-                    'AMB_TEMP            ', 
-                    'NMHC                ']
+                    'NO2                 ', 
+                    'SO2                 ',]
 
 # To test if the result changes and have a third submission
-additional_excluded_columns = ['NO                  ',
-                               'WIND_SPEED          ',
-                               'NMHC                ', 
-                               'O3                  ', 
-                               'NO2                 ', 
-                               'SO2                 ',]
-excluded_columns = additional_excluded_columns
+additional_excluded_columns = ['NO                  ', 
+                            'RAINFALL            ', 
+                            'WIND_SPEED          ', 
+                            'O3                  ', 
+                            'AMB_TEMP            ', 
+                            'NMHC                ']
+
+#excluded_columns = additional_excluded_columns
 
 TIME_SLOTS = [str(i) for i in range(24)]
 

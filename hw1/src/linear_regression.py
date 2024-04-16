@@ -79,7 +79,7 @@ def train_evaluate_predict(model_kind, training_features, training_labels, valid
 identifiers = testing_data['index'].unique()
 
 train_X, train_Y, val_X, val_Y = split_dataset(features, labels)
-model_selected = 'ridge'
+model_selected = 'linear'
 lambda_value = 0.1
 validation_rmse = train_evaluate_predict(model_selected, train_X, train_Y, val_X, val_Y, identifiers, test_feature_array, lambda_value)
 
