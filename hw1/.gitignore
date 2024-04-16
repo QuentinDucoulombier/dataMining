@@ -1,1 +1,13 @@
-my_kaggle_submission.csv
+# Ignorer tout
+*
+
+# Ne pas ignorer les dossiers (pour pouvoir inclure leur contenu)
+!data/
+!src/
+
+# Ne pas ignorer les fichiers spécifiques à git dans le répertoire racine
+!.gitignore
+
+# Inclure le contenu des dossiers data et src
+!data/**
+!src/**

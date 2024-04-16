@@ -1,88 +1,73 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+from data_preprocessing import prepare_data
 
-class LinearRegression:
+# Load data
+features, labels, testing_data, test_feature_array = prepare_data()
+class LinearModel:
     def __init__(self):
-        self.weights = None
+        self.coefficients = None
 
-    def fit(self, X, y, regularization_strength=1e-5):
-        X_b = np.c_[np.ones((X.shape[0], 1)), X]  # Ajouter x0 = 1 à chaque instance
-        identity_matrix = np.eye(X_b.shape[1])
-        identity_matrix[0, 0] = 0  # Exclure le terme de biais de la régularisation
-        self.weights = np.linalg.inv(X_b.T @ X_b + regularization_strength * identity_matrix) @ X_b.T @ y
+    def train(self, X, y):
+        X_with_bias = np.c_[np.ones((X.shape[0], 1)), X]
+        self.coefficients = np.linalg.inv(X_with_bias.T @ X_with_bias) @ X_with_bias.T @ y
 
     def predict(self, X):
-        X_b = np.c_[np.ones((X.shape[0], 1)), X]  # Ajouter x0 = 1 à chaque instance
-        return X_b @ self.weights
+        X_with_bias = np.c_[np.ones((X.shape[0], 1)), X]
+        return X_with_bias @ self.coefficients
 
-    def calculate_rmse(self, predictions, targets):
-        return np.sqrt(np.mean((predictions - targets) ** 2))
+class RidgeModel:
+    def __init__(self):
+        self.coefficients = None
 
-def load_data(filepath):
-    data = pd.read_csv(filepath)
-    if 'PM2.5' not in data.columns:
-        raise ValueError("Data must contain 'PM2.5' column.")
-    X = data.drop('PM2.5', axis=1).values
-    y = data['PM2.5'].values
-    return X, y
+    def train(self, X, y, lambda_val=1e-5):
+        X_with_bias = np.c_[np.ones((X.shape[0], 1)), X]
+        I = np.eye(X_with_bias.shape[1])
+        I[0, 0] = 0  # Exclude bias from regularization
+        self.coefficients = np.linalg.inv(X_with_bias.T @ X_with_bias + lambda_val * I) @ X_with_bias.T @ y
 
+    def predict(self, X):
+        X_with_bias = np.c_[np.ones((X.shape[0], 1)), X]
+        return X_with_bias @ self.coefficients
 
-def create_submission_file(predictions, filename="submission.csv"):
-    """
-    Create a Kaggle submission file from the predictions.
+def calculate_rmse(actual, predicted):
+    mean_squared_error = np.mean((actual - predicted) ** 2)
+    return np.sqrt(mean_squared_error)
 
-    Parameters:
-    - predictions: A list or array of predictions.
-    - filename: The name of the submission file to create.
+def split_dataset(features, targets, split_ratio=0.2, seed=42):
+    np.random.seed(seed)
+    shuffled_indices = np.random.permutation(len(features))
+    test_set_size = int(len(features) * split_ratio)
+    train_indices = shuffled_indices[:-test_set_size]
+    test_indices = shuffled_indices[-test_set_size:]
+    return features[train_indices], targets[train_indices], features[test_indices], targets[test_indices]
 
-    The function assumes that the index of predictions starts from 0 and corresponds to the test dataset order.
-    """
-    # Create a DataFrame with the index and the predictions
-    df = pd.DataFrame(predictions, columns=['answer'])
-    
-    # Ajouter une colonne 'index' basée sur le nombre de prédictions
-    df.index.name = 'index'
-    df.reset_index(inplace=True)
-    
-    # Format the 'index' column to match the required Kaggle format
-    df['index'] = df['index'].apply(lambda x: f'index_{x}')
-    
-    # Enregistrer le DataFrame dans un fichier CSV
-    df.to_csv(filename, index=False)
+def train_evaluate_predict(model_kind, training_features, training_labels, validation_features, validation_labels, identifier, future_features, regularization=None):
+    if model_kind == 'linear':
+        model = LinearModel()
+    elif model_kind == 'ridge':
+        model = RidgeModel()
+    else:
+        raise ValueError("Model type not supported, select 'linear' or 'ridge'")
 
+    model.train(training_features, training_labels, regularization if model_kind == 'ridge' else 0.01)
+    val_predictions = model.predict(validation_features)
+    validation_rmse = calculate_rmse(validation_labels, val_predictions)
 
-if __name__ == "__main__":
-    # Charger les données d'entraînement et de test
-    X_train, y_train = load_data('./processed_train.csv')
-    X_test, y_test = load_data('./processed_test.csv')
+    model.train(features, labels, regularization if model_kind == 'ridge' else 0.01)
+    future_predictions = model.predict(future_features)
 
-    # Créer une instance de LinearRegression
-    model = LinearRegression()
+    prediction_data = [[idx, prediction] for idx, prediction in zip(identifier, future_predictions)]
+    results_df = pd.DataFrame(prediction_data, columns=['Index', 'Prediction'])
+    results_df.to_csv("results.csv", index=False)
 
-    # Ajuster le modèle
-    model.fit(X_train, y_train)
+    return validation_rmse
 
-    # Prédire en utilisant le modèle
-    predictions_train = model.predict(X_train)
-    predictions_test = model.predict(X_test)
+identifiers = testing_data['index_0'].unique()
 
-    # Calculer et afficher RMSE
-    rmse_train = model.calculate_rmse(predictions_train, y_train)
-    rmse_test = model.calculate_rmse(predictions_test, y_test)
+train_X, train_Y, val_X, val_Y = split_dataset(features, labels)
+model_selected = 'ridge'
+lambda_value = 0.01
+validation_rmse = train_evaluate_predict(model_selected, train_X, train_Y, val_X, val_Y, identifiers, test_feature_array, lambda_value)
 
-    # Tracer les prédictions par rapport aux valeurs réelles pour le jeu de test
-    plt.figure(figsize=(10, 6))
-    plt.scatter(y_test, predictions_test, alpha=0.5)
-    plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=4)
-    plt.xlabel('Actual')
-    plt.ylabel('Predicted')
-    plt.title('Actual vs. Predicted')
-    plt.show()
-
-    print(f"RMSE on training set: {rmse_train:.10f}")
-    print(f"RMSE on test set: {rmse_test:.10f}")
-    # Créer le fichier de soumission
-    y_test_pred_reduced = predictions_test[8::9]
-    create_submission_file(y_test_pred_reduced, filename="my_kaggle_submission.csv")
-    create_submission_file(y_test, filename="my_kaggle_submission_true.csv")
+print("Validation RMSE:", validation_rmse)
