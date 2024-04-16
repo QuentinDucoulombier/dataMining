@@ -10,11 +10,11 @@ excluded_columns = ['NO                  ',
 
 # To test if the result changes and have a third submission
 additional_excluded_columns = ['NO                  ', 
-                            'RAINFALL            ', 
-                            'WIND_SPEED          ', 
-                            'O3                  ', 
-                            'AMB_TEMP            ', 
-                            'NMHC                ']
+                               'RAINFALL            ', 
+                               'WIND_SPEED          ', 
+                               'O3                  ', 
+                               'AMB_TEMP            ', 
+                               'NMHC                ']
 
 #excluded_columns = additional_excluded_columns
 
