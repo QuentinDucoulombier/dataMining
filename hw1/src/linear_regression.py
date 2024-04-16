@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from data_preprocessing import prepare_data
+import matplotlib.pyplot as plt
 
 # Load data
 features, labels, testing_data, test_feature_array = prepare_data()
@@ -54,6 +55,15 @@ def train_evaluate_predict(model_kind, training_features, training_labels, valid
     val_predictions = model.predict(validation_features)
     validation_rmse = calculate_rmse(validation_labels, val_predictions)
 
+    plt.figure(figsize=(10, 5))
+    plt.scatter(validation_labels, val_predictions, color='blue', label='Predictions vs Actual')
+    plt.plot([validation_labels.min(), validation_labels.max()], [validation_labels.min(), validation_labels.max()], 'k--', lw=4)
+    plt.xlabel('Actual')
+    plt.ylabel('Predicted')
+    plt.title('Validation Predictions vs Actual Data')
+    plt.legend()
+    plt.show()
+    
     model.train(features, labels, regularization if model_kind == 'ridge' else 0.01)
     future_predictions = model.predict(future_features)
 
@@ -63,7 +73,7 @@ def train_evaluate_predict(model_kind, training_features, training_labels, valid
 
     return validation_rmse
 
-identifiers = testing_data['index_0'].unique()
+identifiers = testing_data['index'].unique()
 
 train_X, train_Y, val_X, val_Y = split_dataset(features, labels)
 model_selected = 'ridge'

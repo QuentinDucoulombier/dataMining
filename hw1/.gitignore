@@ -11,3 +11,5 @@
 # Inclure le contenu des dossiers data et src
 !data/**
 !src/**
+
+src/__pycache__/

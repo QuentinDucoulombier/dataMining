@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 
-excluded_columns = ['RAINFALL            ', 
-                    'NO                  ', 
+excluded_columns = ['NO                  ', 
+                    'RAINFALL            ', 
                     'WIND_SPEED          ', 
                     'O3                  ', 
                     'AMB_TEMP            ', 
@@ -15,9 +15,14 @@ additional_excluded_columns = ['RAINFALL            ',
                                'NO2                 ', 
                                'SO2                 ',]
 
+TIME_SLOTS = [str(i) for i in range(24)]
+
+
 def fetch_and_process_data(path_to_train, path_to_test):
+    test_headers = ['index', 'TYPE             ', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'h8', 'h9']
     training_data = pd.read_csv(path_to_train)
     testing_data = pd.read_csv(path_to_test)
+    testing_data = pd.read_csv(path_to_test, names=test_headers)
     training_data = training_data.drop(["Location"], axis=1)
     return training_data, testing_data
 
@@ -58,7 +63,7 @@ def fill_missing_values(data, fill_dict, category_column):
     return data
 
 def interpolate_missing_values(array, previous):
-    row_count, column_count = array.shape
+    row_count, _ = array.shape
     for i in range(row_count):
         nan_indices = np.isnan(array[i])
         valid_indices = np.where(~nan_indices)[0]
@@ -73,28 +78,28 @@ def interpolate_missing_values(array, previous):
 
 def preprocess(dataset, excluded_columns):
     for column in excluded_columns:
-        dataset = dataset[dataset['NEW_COL             '] != column].reset_index(drop=True)
+        dataset = dataset[dataset['TYPE             '] != column].reset_index(drop=True)
     return dataset
 
 def preprocess_and_interpolate(dataset, days_list, column_indices):
-    first_day_data = dataset[dataset['index_0'] == days_list[0]].iloc[:, column_indices].to_numpy().astype(float)
+    first_day_data = dataset[dataset['index'] == days_list[0]].iloc[:, column_indices].to_numpy().astype(float)
     for day in days_list[1:]:
-        daily_data = dataset[dataset['index_0'] == day].iloc[:, column_indices].to_numpy().astype(float)
+        daily_data = dataset[dataset['index'] == day].iloc[:, column_indices].to_numpy().astype(float)
         first_day_data = np.concatenate((first_day_data, daily_data), axis=1)
 
     interpolated_data, _ = interpolate_missing_values(first_day_data, None)
     for i, day in enumerate(days_list):
         start_idx = i * 9
         end_idx = start_idx + 9
-        dataset.loc[dataset['index_0'] == day, dataset.columns[column_indices]] = interpolated_data[:, start_idx:end_idx]
+        dataset.loc[dataset['index'] == day, dataset.columns[column_indices]] = interpolated_data[:, start_idx:end_idx]
     return dataset, _
 
 def extract_features_targets(dataset, unique_days):
     features, targets = [], []
     for day in unique_days:
-        day_data = dataset[dataset['index_0'] == day]
+        day_data = dataset[dataset['index'] == day]
         feature = day_data.iloc[:, 2:11].to_numpy().astype(float)
-        target = day_data[day_data['NEW_COL             '] == 'PM2.5               '].iloc[:, 10].to_numpy()
+        target = day_data[day_data['TYPE             '] == 'PM2.5               '].iloc[:, 10].to_numpy()
         if target.size > 0:
             targets.append(float(target[0]))
             features.append(feature.flatten())
@@ -105,7 +110,7 @@ def filter_out_columns(dataframe, unwanted_columns):
         dataframe = dataframe[dataframe['ItemName'] != column].reset_index(drop=True)
     return dataframe
 
-def fill_and_smooth_data(dataframe, date_col, item_col, column_indices):
+def fill_and_smooth_data(dataframe, date_col, column_indices):
     unique_days = dataframe[date_col].unique()
     accumulated_data = dataframe[dataframe[date_col] == unique_days[0]].iloc[:, column_indices].to_numpy().astype(float)
     for subsequent_day in unique_days[1:]:
@@ -119,7 +124,7 @@ def fill_and_smooth_data(dataframe, date_col, item_col, column_indices):
         dataframe.loc[dataframe[date_col] == day, dataframe.columns[column_indices]] = smoothed_data[:, start_index:end_index]
     return dataframe
 
-def generate_features_and_labels(dataframe, day_counts, start_column, label_offset):
+def generate_features_and_labels(dataframe, day_counts, start_column):
     feature_set, label_set = [], []
     for month in range(day_counts.shape[0] // 20):
         month_days = day_counts[month * 20:(month + 1) * 20]
@@ -140,50 +145,6 @@ def generate_features_and_labels(dataframe, day_counts, start_column, label_offs
             label_set.append(target)
     return np.array(feature_set), np.array(label_set)
 
-TIME_SLOTS = [str(i) for i in range(24)]
-
-training_data, testing_data = fetch_and_process_data('./data/train.csv', './data/test.csv')
-print(training_data.shape)
-
-processed_data = transform_data(training_data, TIME_SLOTS)
-processed_data = processed_data.rename_axis(None, axis=1)
-processed_data = sanitize_and_fill(processed_data)
-
-fill_values = compute_fill_values(processed_data)
-print(processed_data.info())
-print(processed_data.describe(include='all'))
-print(processed_data.shape)
-print(fill_values)
-
-print(fill_values)
-cleaned_testing_data = preprocess(testing_data.copy(), excluded_columns)
-cleaned_testing_data = fill_missing_values(cleaned_testing_data, fill_values, 'NEW_COL             ')
-print(cleaned_testing_data.shape)
-
-days_list = list(cleaned_testing_data['index_0'].unique())
-cleaned_testing_data, _ = preprocess_and_interpolate(cleaned_testing_data, days_list, range(2, 11))
-
-test_feature_array, test_target_array = extract_features_targets(cleaned_testing_data, cleaned_testing_data['index_0'].unique())
-print(test_feature_array.shape)
-
-print(training_data.columns)
-training_data
-
-print(training_data.columns)
-processed_df = filter_out_columns(training_data.copy(), excluded_columns)
-processed_df = fill_missing_values(processed_df, fill_values, 'ItemName')
-
-days = processed_df['Date'].unique()
-month_count = days.shape[0] // 20
-print(month_count)
-
-processed_df = fill_and_smooth_data(processed_df, 'Date', 'ItemName', range(2, 26))
-
-features, labels = generate_features_and_labels(processed_df, days, 2, 5)
-print(len(features))
-print(features.shape)
-print(len(labels))
-
 def prepare_data():
     training_data, testing_data = fetch_and_process_data('./data/train.csv', './data/test.csv')
 
@@ -194,17 +155,61 @@ def prepare_data():
     processed_df = filter_out_columns(training_data.copy(), excluded_columns)
     processed_df = fill_missing_values(processed_df, fill_values, 'ItemName')
     days = processed_df['Date'].unique()
-    processed_df = fill_and_smooth_data(processed_df, 'Date', 'ItemName', range(2, 26))
-    features, labels = generate_features_and_labels(processed_df, days, 2, 5)
+    processed_df = fill_and_smooth_data(processed_df, 'Date', range(2, 26))
+    features, labels = generate_features_and_labels(processed_df, days, 2)
     
     cleaned_testing_data = preprocess(testing_data.copy(), excluded_columns)
-    cleaned_testing_data = fill_missing_values(cleaned_testing_data, fill_values, 'NEW_COL             ')
-    days_list = list(cleaned_testing_data['index_0'].unique())
+    cleaned_testing_data = fill_missing_values(cleaned_testing_data, fill_values, 'TYPE             ')
+    days_list = list(cleaned_testing_data['index'].unique())
     cleaned_testing_data, _ = preprocess_and_interpolate(cleaned_testing_data, days_list, range(2, 11))
-    test_feature_array, test_target_array = extract_features_targets(cleaned_testing_data, cleaned_testing_data['index_0'].unique())
+    test_feature_array, test_target_array = extract_features_targets(cleaned_testing_data, cleaned_testing_data['index'].unique())
 
     return features, labels, testing_data, test_feature_array
 
 # Now this function can be called when this script is run directly
 if __name__ == "__main__":
+
+    training_data, testing_data = fetch_and_process_data('./data/train.csv', './data/test.csv')
+
+    print(training_data.shape)
+
+    processed_data = transform_data(training_data, TIME_SLOTS)
+    processed_data = processed_data.rename_axis(None, axis=1)
+    processed_data = sanitize_and_fill(processed_data)
+
+    fill_values = compute_fill_values(processed_data)
+    print(processed_data.info())
+    print(processed_data.describe(include='all'))
+    print(processed_data.shape)
+    print(fill_values)
+
+    print(fill_values)
+    cleaned_testing_data = preprocess(testing_data.copy(), excluded_columns)
+    cleaned_testing_data = fill_missing_values(cleaned_testing_data, fill_values, 'TYPE             ')
+    print(cleaned_testing_data.shape)
+
+    days_list = list(cleaned_testing_data['index'].unique())
+    cleaned_testing_data, _ = preprocess_and_interpolate(cleaned_testing_data, days_list, range(2, 11))
+
+    test_feature_array, test_target_array = extract_features_targets(cleaned_testing_data, cleaned_testing_data['index'].unique())
+    print(test_feature_array.shape)
+
+    print(training_data.columns)
+    training_data
+
+    print(training_data.columns)
+    processed_df = filter_out_columns(training_data.copy(), excluded_columns)
+    processed_df = fill_missing_values(processed_df, fill_values, 'ItemName')
+
+    days = processed_df['Date'].unique()
+    month_count = days.shape[0] // 20
+    print(month_count)
+
+    processed_df = fill_and_smooth_data(processed_df, 'Date', range(2, 26))
+
+    features, labels = generate_features_and_labels(processed_df, days, 2)
+    print(len(features))
+    print(features.shape)
+    print(len(labels))
+
     features, labels, testing_data, test_feature_array = prepare_data()
