@@ -8,12 +8,14 @@ excluded_columns = ['NO                  ',
                     'AMB_TEMP            ', 
                     'NMHC                ']
 
-additional_excluded_columns = ['RAINFALL            ',
-                               'NO                  ', 
-                               'NOx                 ', 
+# To test if the result changes and have a third submission
+additional_excluded_columns = ['NO                  ',
+                               'WIND_SPEED          ',
+                               'NMHC                ', 
                                'O3                  ', 
                                'NO2                 ', 
                                'SO2                 ',]
+excluded_columns = additional_excluded_columns
 
 TIME_SLOTS = [str(i) for i in range(24)]
 

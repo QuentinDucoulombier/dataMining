@@ -47,12 +47,13 @@ def split_dataset(features, targets, split_ratio=0.2, seed=42):
 def train_evaluate_predict(model_kind, training_features, training_labels, validation_features, validation_labels, identifier, future_features, regularization=None):
     if model_kind == 'linear':
         model = LinearModel()
+        model.train(training_features, training_labels)  # No regularization parameter
     elif model_kind == 'ridge':
         model = RidgeModel()
+        model.train(training_features, training_labels, regularization)  # Pass regularization parameter
     else:
         raise ValueError("Model type not supported, select 'linear' or 'ridge'")
 
-    model.train(training_features, training_labels, regularization if model_kind == 'ridge' else 0.01)
     val_predictions = model.predict(validation_features)
     validation_rmse = calculate_rmse(validation_labels, val_predictions)
 
@@ -65,20 +66,21 @@ def train_evaluate_predict(model_kind, training_features, training_labels, valid
     plt.legend()
     plt.show()
     
-    model.train(features, labels, regularization if model_kind == 'ridge' else 0.01)
+    model.train(features, labels)  # Adjust accordingly if it's LinearModel
     future_predictions = model.predict(future_features)
 
     prediction_data = [[idx, prediction] for idx, prediction in zip(identifier, future_predictions)]
-    results_df = pd.DataFrame(prediction_data, columns=['Index', 'Prediction'])
+    results_df = pd.DataFrame(prediction_data, columns=['index', 'answer'])
     results_df.to_csv("results.csv", index=False)
 
     return validation_rmse
+
 
 identifiers = testing_data['index'].unique()
 
 train_X, train_Y, val_X, val_Y = split_dataset(features, labels)
 model_selected = 'ridge'
-lambda_value = 0.01
+lambda_value = 0.1
 validation_rmse = train_evaluate_predict(model_selected, train_X, train_Y, val_X, val_Y, identifiers, test_feature_array, lambda_value)
 
 print("Validation RMSE:", validation_rmse)
