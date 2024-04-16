@@ -8,16 +8,6 @@ excluded_columns = ['NO                  ',
                     'NO2                 ', 
                     'SO2                 ',]
 
-# To test if the result changes and have a third submission
-additional_excluded_columns = ['NO                  ', 
-                               'RAINFALL            ', 
-                               'WIND_SPEED          ', 
-                               'O3                  ', 
-                               'AMB_TEMP            ', 
-                               'NMHC                ']
-
-#excluded_columns = additional_excluded_columns
-
 TIME_SLOTS = [str(i) for i in range(24)]
 
 
@@ -169,13 +159,6 @@ def prepare_data():
 
 
 if __name__ == "__main__":
-    # Prepare data
     features, labels, testing_data, test_feature_array, test_target_array = prepare_data()
 
-    # Displaying some basic information about the prepared data
-    print("Features shape:", features.shape)
-    print("Labels length:", len(labels))
-    print("Testing data shape:", testing_data.shape)
-    print("Test feature array shape:", test_feature_array.shape)
-    print("Test target array length:", len(test_target_array))
-
+    print("Data preprocessing complete!")

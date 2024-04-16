@@ -1,9 +1,7 @@
 import numpy as np
-import pandas as pd
-from data_preprocessing import prepare_data
 import matplotlib.pyplot as plt
+from data_preprocessing import prepare_data
 
-# Load data
 
 features, labels, testing_data, test_feature_array, _ = prepare_data()
 class LinearModel:
@@ -44,7 +42,29 @@ def split_dataset(features, targets, split_ratio=0.2, seed=42):
     test_indices = shuffled_indices[-test_set_size:]
     return features[train_indices], targets[train_indices], features[test_indices], targets[test_indices]
 
-def train_evaluate_predict(model_kind, training_features, training_labels, validation_features, validation_labels, identifier, future_features, regularization=None):
+def train_evaluate_for_sizes(features, labels, sizes, model_kind='linear', regularization=1e-5):
+    train_sizes = sizes
+    train_rmses = []
+    val_rmses = []
+
+    for size in train_sizes:
+        subset_indices = np.random.choice(np.arange(len(features)), int(len(features) * size), replace=False)
+        subset_features = features[subset_indices]
+        subset_labels = labels[subset_indices]
+
+        train_X, train_Y, val_X, val_Y = split_dataset(subset_features, subset_labels)
+
+        model, validation_rmse = train_evaluate_predict(model_kind, train_X, train_Y, val_X, val_Y, identifiers, test_feature_array, regularization, return_model=True)
+        train_predictions = model.predict(train_X)
+        train_rmse = calculate_rmse(train_Y, train_predictions)
+
+        train_rmses.append(train_rmse)
+        val_rmses.append(validation_rmse)
+
+    return train_sizes, train_rmses, val_rmses
+
+# Adjusted function to return the model as well
+def train_evaluate_predict(model_kind, training_features, training_labels, validation_features, validation_labels, identifier, future_features, regularization=None, return_model=False):
     if model_kind == 'linear':
         model = LinearModel()
         model.train(training_features, training_labels)  # No regularization parameter
@@ -57,24 +77,45 @@ def train_evaluate_predict(model_kind, training_features, training_labels, valid
     val_predictions = model.predict(validation_features)
     validation_rmse = calculate_rmse(validation_labels, val_predictions)
 
-    plt.figure(figsize=(10, 5))
-    plt.scatter(validation_labels, val_predictions, color='blue', label='Predictions vs Actual')
-    plt.plot([validation_labels.min(), validation_labels.max()], [validation_labels.min(), validation_labels.max()], 'k--', lw=4)
-    plt.xlabel('Actual')
-    plt.ylabel('Predicted')
-    plt.title('Validation Predictions vs Actual Data')
-    plt.legend()
-    plt.show()
-    
-    model.train(features, labels)  # Adjust accordingly if it's LinearModel
-    future_predictions = model.predict(future_features)
-
-    prediction_data = [[idx, prediction] for idx, prediction in zip(identifier, future_predictions)]
-    results_df = pd.DataFrame(prediction_data, columns=['index', 'answer'])
-    results_df.to_csv("results.csv", index=False)
-
+    if return_model:
+        return model, validation_rmse
     return validation_rmse
 
+def plot_impact_amounts(training_sizes, train_rmses, val_rmses):
+    plt.figure(figsize=(10, 6))
+    plt.plot(training_sizes, train_rmses, marker='o', label='Training RMSE')
+    plt.plot(training_sizes, val_rmses, marker='o', color='red', label='Validation RMSE')
+    plt.title('Impact of Training Data Size on RMSE')
+    plt.xlabel('Percentage of Training Data Used')
+    plt.ylabel('RMSE')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
+def train_evaluate_for_regularization(features, labels, model_kind, lambda_values):
+    val_rmses = []
+
+    for lambda_val in lambda_values:
+        # Split the data
+        train_X, train_Y, val_X, val_Y = split_dataset(features, labels)
+
+        # Train and evaluate the model with regularization
+        model, validation_rmse = train_evaluate_predict(model_kind, train_X, train_Y, val_X, val_Y, identifiers, test_feature_array, lambda_val, return_model=True)
+        val_rmses.append(validation_rmse)
+
+    return lambda_values, val_rmses
+
+def plot_regularization_impact(lambda_values, val_rmses):
+    plt.figure(figsize=(10, 6))
+    plt.plot(lambda_values, val_rmses, marker='o', label='Validation RMSE')
+    plt.title('Impact of Regularization on PM2.5 Prediction Accuracy')
+    plt.xlabel('Regularization Strength (Lambda)')
+    plt.ylabel('Validation RMSE')
+    plt.xscale('log')  # Use logarithmic scale if lambda_values vary exponentially
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
 identifiers = testing_data['index'].unique()
 
@@ -84,3 +125,12 @@ lambda_value = 0.1
 validation_rmse = train_evaluate_predict(model_selected, train_X, train_Y, val_X, val_Y, identifiers, test_feature_array, lambda_value)
 
 print("Validation RMSE:", validation_rmse)
+
+sizes = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+train_sizes, train_rmses, val_rmses = train_evaluate_for_sizes(features, labels, sizes)
+
+plot_impact_amounts(train_sizes, train_rmses, val_rmses)
+
+lambda_values = [0, 1e-4, 1e-3, 1e-2, 1e-1, 1]
+lambda_vals, validation_rmses = train_evaluate_for_regularization(features, labels, 'ridge', lambda_values)
+plot_regularization_impact(lambda_vals, validation_rmses)
